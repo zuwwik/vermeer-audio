@@ -2,9 +2,11 @@
 /* Controller test doubles. No ALSA PCM or real modem is opened. */
 #define _GNU_SOURCE
 #include "voice-session.h"
+#include "voice-subscriptions.h"
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <glib.h>
+#include <gio/gio.h>
 #include <pulse/pulseaudio.h>
 #include <signal.h>
 #include <stdio.h>
@@ -32,8 +34,48 @@ int voice_session_event_fd(struct voice_session *s)
 { (void)s; return card_events[0]; }
 int voice_session_read_event(struct voice_session *s)
 { (void)s; return -EAGAIN; }
-int voice_session_start(struct voice_session *s, bool speaker)
-{ s->speaker = speaker; return 0; }
+int voice_session_start(struct voice_session *s, bool speaker, unsigned int subscription)
+{
+	const char *path = g_getenv("VERMEER_TEST_SELECTED_SUBSCRIPTION");
+	s->speaker = speaker; s->subscription = subscription;
+	if (path) {
+		g_autofree char *text = g_strdup_printf("%u\n", subscription);
+		g_file_set_contents(path, text, -1, NULL);
+	}
+	return 0;
+}
+struct voice_subscriptions {
+	GFileMonitor *monitor;
+	voice_subscription_changed changed;
+	void *data;
+};
+static void mock_subscription_changed(GFileMonitor *monitor, GFile *file,
+				     GFile *other, GFileMonitorEvent event, void *data)
+{
+	struct voice_subscriptions *self = data;
+	g_autofree char *text = NULL;
+	unsigned int subscription, ready;
+	(void)monitor; (void)file; (void)other; (void)event;
+	if (g_file_get_contents(g_getenv("VERMEER_TEST_SUBSCRIPTION"), &text, NULL, NULL) &&
+	    sscanf(text, "%u %u", &subscription, &ready) == 2)
+		self->changed(subscription, ready, self->data);
+}
+struct voice_subscriptions *voice_subscriptions_new(voice_subscription_changed changed, void *data)
+{
+	struct voice_subscriptions *self = g_new0(struct voice_subscriptions, 1);
+	const char *path = g_getenv("VERMEER_TEST_SUBSCRIPTION");
+	self->changed = changed; self->data = data;
+	changed(1, true, data);
+	if (path) {
+		g_autoptr(GFile) file = g_file_new_for_path(path);
+		self->monitor = g_file_monitor_file(file, G_FILE_MONITOR_NONE, NULL, NULL);
+		g_signal_connect(self->monitor, "changed", G_CALLBACK(mock_subscription_changed), self);
+		mock_subscription_changed(NULL, NULL, NULL, 0, self);
+	}
+	return self;
+}
+void voice_subscriptions_free(struct voice_subscriptions *s)
+{ g_clear_object(&s->monitor); g_free(s); }
 void voice_session_stop(struct voice_session *s) { (void)s; }
 void voice_session_destroy(struct voice_session *s)
 { (void)s; close(card_events[0]); close(card_events[1]); }

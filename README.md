@@ -12,8 +12,8 @@ not included.
 
 ## Build and install
 
-Build on the phone with a C compiler, pkg-config, ALSA, GLib/GIO and PulseAudio
-development headers:
+Build on the phone with a C compiler, pkg-config, ALSA, GLib/GIO, PulseAudio,
+libqmi-glib and libqrtr-glib development headers:
 
 ```sh
 make -j2
@@ -65,9 +65,15 @@ The ordinary capture path is one physical AMIC1 duplicated into two PCM
 channels. Its analog gain is 8 and digital gain is 84 (unity). The speaker
 amplifiers use raw volume 360; Android speaker protection is not implemented.
 Call routing, system-media restoration and the native voice paths are included.
+Two private QMI VOICE clients observe the logical subscriptions and select
+the kernel's matching voice session for a call. The primary physical SIM slot
+does not determine the audio route. The prebuilt controller also needs the
+distribution's libqmi-glib and libqrtr-glib runtime libraries.
 Bluetooth desktop audio uses the distribution's PipeWire/BlueZ stack; this does
 not imply working Bluetooth modem-call speech or verified simultaneous dual-SIM
 calls. Persistent DSP firmware failures remain a separate kernel/firmware issue.
+The SIM2 speech path was checked manually; a repeat hardware check of automatic
+incoming SIM2 selection is still pending.
 
 Source licenses are identified per file. The topology templates use BSD-3-Clause;
 the controller uses GPL-2.0-only. Stock amplifier and ACDB-derived data retain

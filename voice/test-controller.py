@@ -139,6 +139,21 @@ def inside(exe):
         call("SelectMode", "0")
         check_internal_streams()
         wait_for(lambda: profiles() == baseline and not state_file.exists())
+        if os.environ.get("VERMEER_TEST_SUBSCRIPTION"):
+            subscription = Path(os.environ["VERMEER_TEST_SUBSCRIPTION"])
+            selected = Path(os.environ["VERMEER_TEST_SELECTED_SUBSCRIPTION"])
+            for first, second in ((2, 1), (1, 2)):
+                subscription.write_text(f"{first} 1\n")
+                time.sleep(0.3)
+                call("SelectMode", "1")
+                wait_for(lambda: selected.read_text() == f"{first}\n")
+                subscription.write_text(f"{second} 1\n")
+                wait_for(lambda: selected.read_text() == f"{second}\n")
+                call("EnableSpeaker", "false")
+                assert selected.read_text() == f"{second}\n"
+                call("SelectMode", "0")
+                wait_for(lambda: profiles() == baseline and not state_file.exists())
+            print("PASS: native subscription events select SIM2 with unchanged primary SIM; active switching and speaker changes preserve the subscription")
         assert subprocess.check_output(["pactl", "get-default-sink"], text=True).strip() == default_sink
         assert subprocess.check_output(["pactl", "get-default-source"], text=True).strip() == default_source
         print("PASS: CallAudio methods, invalid mode, speaker/mic state, profile restoration")
@@ -228,6 +243,8 @@ def isolated():
                    VERMEER_TEST_PROFILES=str(tmp / "profiles.ini"),
                    VERMEER_TEST_VOLUME=str(tmp / "volume.txt"))
         env["VERMEER_TEST_CAPTURE"] = str(tmp / "capture.txt")
+        env["VERMEER_TEST_SUBSCRIPTION"] = str(tmp / "subscription.txt")
+        env["VERMEER_TEST_SELECTED_SUBSCRIPTION"] = str(tmp / "selected-subscription.txt")
         env["DBUS_SESSION_BUS_ADDRESS"] = "unix:path=" + str(tmp / "unused-bus")
         env.update(XDG_STATE_HOME=str(tmp / "state"), XDG_CONFIG_HOME=str(tmp / "config"),
                    XDG_CACHE_HOME=str(tmp / "cache"))
@@ -246,6 +263,8 @@ def isolated():
             "[cards]\nalsa_card.platform-sound=HiFi\nalsa_card.comprC0=HiFi\n")
         Path(env["VERMEER_TEST_VOLUME"]).write_text("")
         Path(env["VERMEER_TEST_CAPTURE"]).write_text("")
+        Path(env["VERMEER_TEST_SUBSCRIPTION"]).write_text("1 1\n")
+        Path(env["VERMEER_TEST_SELECTED_SUBSCRIPTION"]).write_text("")
         servers = []
         with (tmp / "servers.log").open("w+") as log:
             try:

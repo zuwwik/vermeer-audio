@@ -4,7 +4,7 @@ PKG_CONFIG ?= pkg-config
 CFLAGS ?= -O2 -g
 PREFIX ?= /usr/local
 BUILD ?= build
-VOICE_DEPS = alsa gio-2.0 libpulse-mainloop-glib
+VOICE_DEPS = alsa gio-2.0 libpulse-mainloop-glib qmi-glib qrtr-glib
 
 .PHONY: all install install-data install-prebuilt clean
 all: $(BUILD)/vermeer-call-audio $(BUILD)/voice-pcm-test
@@ -12,8 +12,8 @@ all: $(BUILD)/vermeer-call-audio $(BUILD)/voice-pcm-test
 $(BUILD):
 	mkdir -p $@
 
-$(BUILD)/vermeer-call-audio: voice/call-audio.c voice/voice-session.c voice/voice-session.h | $(BUILD)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -Wall -Wextra -Werror voice/call-audio.c voice/voice-session.c $(LDFLAGS) $$( $(PKG_CONFIG) --cflags --libs $(VOICE_DEPS) ) -o $@
+$(BUILD)/vermeer-call-audio: voice/call-audio.c voice/voice-session.c voice/voice-session.h voice/voice-subscriptions.c voice/voice-subscriptions.h | $(BUILD)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Wall -Wextra -Werror voice/call-audio.c voice/voice-session.c voice/voice-subscriptions.c $(LDFLAGS) $$( $(PKG_CONFIG) --cflags --libs $(VOICE_DEPS) ) -o $@
 
 $(BUILD)/voice-pcm-test: voice/voice-pcm-test.c voice/voice-session.c voice/voice-session.h | $(BUILD)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -Wall -Wextra -Werror voice/voice-pcm-test.c voice/voice-session.c $(LDFLAGS) $$( $(PKG_CONFIG) --cflags --libs alsa ) -o $@

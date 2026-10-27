@@ -3,6 +3,7 @@
  * ModemManager is observed read-only; this daemon never places calls.
  */
 #include "voice-session.h"
+#include "voice-subscriptions.h"
 #include <errno.h>
 #include <gio/gio.h>
 #include <glib-unix.h>
@@ -17,7 +18,7 @@
 #define VOICE_SINK "vermeer_voice"
 #define VOICE_SOURCE "vermeer_voice_mic"
 
-enum action { MODE, SPEAKER, MUTE };
+enum action { MODE, SPEAKER, MUTE, SUBSCRIPTION };
 
 struct request {
 	enum action action;
@@ -32,6 +33,10 @@ struct card {
 
 struct app {
 	struct voice_session voice;
+	struct voice_subscriptions *subscriptions;
+	unsigned int subscription;
+	bool subscription_ready;
+	bool subscription_known;
 	GMainLoop *loop;
 	guint hardware_watch;
 	GDBusConnection *bus;
@@ -722,6 +727,8 @@ static gboolean media_stopped(gpointer data)
 {
 	struct app *app = data;
 	bool previous = app->speaker;
+	unsigned int previous_subscription = app->voice.subscription;
+	bool speaker;
 	int ret;
 	if (app->hardware_lost) {
 		g_main_loop_quit(app->loop);
@@ -745,13 +752,14 @@ static gboolean media_stopped(gpointer data)
 		restore_after_media(app);
 		return G_SOURCE_REMOVE;
 	}
+	speaker = app->current->action == SPEAKER ? app->current->value : app->speaker;
 	app->changing_route = false;
 	voice_session_stop(&app->voice);
-	ret = voice_session_start(&app->voice, app->current->value);
+	ret = voice_session_start(&app->voice, speaker, app->subscription);
 	app->result = !ret;
 	if (!ret)
-		app->speaker = app->current->value;
-	else if (voice_session_start(&app->voice, previous) < 0) {
+		app->speaker = speaker;
+	else if (voice_session_start(&app->voice, previous, previous_subscription) < 0) {
 		restore_profiles(app, false);
 		return G_SOURCE_REMOVE;
 	}
@@ -865,7 +873,14 @@ static gboolean start_voice(gpointer data)
 		restore_profiles(app, false);
 		return G_SOURCE_REMOVE;
 	}
-	ret = voice_session_start(&app->voice, app->speaker);
+	if (!app->subscription_ready || (app->automatic_active && !app->subscription_known)) {
+		if (++app->start_attempts < 50)
+			return G_SOURCE_CONTINUE;
+		g_warning("Cannot identify the active modem voice subscription");
+		restore_profiles(app, false);
+		return G_SOURCE_REMOVE;
+	}
+	ret = voice_session_start(&app->voice, app->speaker, app->subscription);
 	/* A PipeWire profile acknowledgement can precede closing its last
 	 * ALSA handle. Retry only this resource conflict, never a DSP error.
 	 */
@@ -876,7 +891,8 @@ static gboolean start_voice(gpointer data)
 		return G_SOURCE_REMOVE;
 	}
 	app->active = true;
-	g_message("AudioReach voice active (%s)", app->speaker ? "speaker" : "receiver");
+	g_message("AudioReach voice active (%s, subscription %u)",
+		  app->speaker ? "speaker" : "receiver", app->voice.subscription);
 	app->result = true;
 	media_start(app);
 	return G_SOURCE_REMOVE;
@@ -1113,8 +1129,11 @@ static void process_requests(struct app *app)
 			complete_request(app, ret >= 0);
 		}
 	} else {
-		if (!app->active || app->speaker == request->value) {
-			app->speaker = request->value;
+		bool same = request->action == SUBSCRIPTION ?
+			app->voice.subscription == app->subscription : app->speaker == request->value;
+		if (!app->active || same) {
+			if (request->action == SPEAKER)
+				app->speaker = request->value;
 			complete_request(app, true);
 			return;
 		}
@@ -1140,6 +1159,23 @@ static void enqueue(struct app *app, enum action action, bool value,
 	request->invocation = invocation ? g_object_ref(invocation) : NULL;
 	g_queue_push_tail(&app->requests, request);
 	process_requests(app);
+}
+
+static void subscription_changed(unsigned int subscription, bool ready, void *data)
+{
+	struct app *app = data;
+	if (ready && !app->subscription_ready)
+		g_message("Native modem voice subscriptions ready");
+	app->subscription_ready = ready;
+	app->subscription_known = ready && subscription >= 1 && subscription <= 2;
+	if (!app->subscription_known)
+		return;
+	if (app->subscription == subscription)
+		return;
+	app->subscription = subscription;
+	g_message("Modem voice subscription %u selected", subscription);
+	if (app->active && app->voice.subscription != subscription)
+		enqueue(app, SUBSCRIPTION, subscription == 2, NULL);
 }
 
 static void method_call(GDBusConnection *connection, const char *sender,
@@ -1429,6 +1465,7 @@ int main(int argc, char **argv)
 	app.source_index = PA_INVALID_INDEX;
 	app.volume = PA_VOLUME_NORM * 3 / 5;
 	app.mic_volume = PA_VOLUME_NORM;
+	app.subscription = 1;
 	ret = voice_session_init(&app.voice, argv[1]);
 	if (ret < 0) {
 		g_printerr("AudioReach voice initialization: %s\n", snd_strerror(ret));
@@ -1480,10 +1517,12 @@ int main(int argc, char **argv)
 		g_error("Cannot connect to desktop audio");
 	g_unix_signal_add(SIGINT, terminate, &app);
 	g_unix_signal_add(SIGTERM, terminate, &app);
+	app.subscriptions = voice_subscriptions_new(subscription_changed, &app);
 	g_main_loop_run(app.loop);
 	exit_status = app.quitting && !app.cards->len ? 0 : 1;
 	if (app.hardware_watch)
 		g_source_remove(app.hardware_watch);
+	voice_subscriptions_free(app.subscriptions);
 	voice_session_destroy(&app.voice);
 	g_bus_unown_name(owner);
 	g_dbus_connection_unregister_object(app.bus, registration);

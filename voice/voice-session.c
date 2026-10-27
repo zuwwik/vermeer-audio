@@ -51,6 +51,9 @@ int voice_session_init(struct voice_session *session, const char *ucm_directory)
 	ret = voice_control(session, "Voice Call Capture Volume", 0, false);
 	if (ret < 0)
 		goto error;
+	ret = voice_control(session, "Voice Call SIM", 0, false);
+	if (ret < 0)
+		goto error;
 	snd_pcm_info_alloca(&info);
 	while (snd_ctl_pcm_next_device(session->ctl, &device) >= 0 && device >= 0) {
 		snd_pcm_info_set_device(info, device);
@@ -142,12 +145,25 @@ void voice_session_stop(struct voice_session *session)
 	}
 }
 
-int voice_session_start(struct voice_session *session, bool speaker)
+int voice_session_start(struct voice_session *session, bool speaker, unsigned int subscription)
 {
 	int ret;
+	snd_ctl_elem_value_t *control;
 
+	if (subscription < 1 || subscription > 2)
+		return -EINVAL;
 	if (session->rx || session->tx)
 		return -EBUSY;
+	snd_ctl_elem_value_alloca(&control);
+	snd_ctl_elem_value_set_interface(control, SND_CTL_ELEM_IFACE_MIXER);
+	snd_ctl_elem_value_set_name(control, "Voice Call SIM");
+	ret = snd_ctl_elem_read(session->ctl, control);
+	if (ret < 0)
+		return ret;
+	snd_ctl_elem_value_set_enumerated(control, 0, subscription - 1);
+	ret = snd_ctl_elem_write(session->ctl, control);
+	if (ret < 0)
+		return ret;
 	session->speaker = speaker;
 	/* Mark sequences before running them so partially applied controls are
 	 * disabled as well when an individual ALSA control write fails.
@@ -195,6 +211,7 @@ int voice_session_start(struct voice_session *session, bool speaker)
 	ret = snd_pcm_start(session->tx);
 	if (ret < 0)
 		goto error;
+	session->subscription = subscription;
 	return 0;
 error:
 	fprintf(stderr, "AudioReach voice start: %s\n", snd_strerror(ret));

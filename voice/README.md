@@ -6,6 +6,12 @@ The controller preserves the desktop profile/default devices and restores them
 after call teardown or audio service recovery. The matching kernel supplies
 handset/speaker routing, volume and microphone mute controls.
 
+`voice-subscriptions.c` binds one private QMI VOICE client to each logical
+subscription. Call-state indications and an initial snapshot select
+`Voice Call SIM` before the hostless stream opens. A newer indication takes
+precedence over an older snapshot, and speaker changes retain the selected
+subscription. This requires libqmi-glib and libqrtr-glib.
+
 The version 3 firmware contains the RX/TX graphs and calibration used by the
 working phone. The TX volume-control module is after the ordinary microphone
 tap. The kernel validates all image sizes and graph endpoints before use.
@@ -45,3 +51,16 @@ KERNEL_SOURCE=../vermeer-mainline python3 voice/test-driver.py firmware/qcom/sm8
 
 `test-controller.py` requires an explicitly prepared private audio session with
 mock voice hardware. Do not run it against a normal desktop or a live call.
+It can prepare that session itself:
+
+```sh
+python3 voice/test-controller.py --isolated
+```
+
+The subscription-selection checks run without an audio server or modem:
+
+```sh
+cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+  voice/test-subscriptions.c -o build/test-subscriptions
+build/test-subscriptions
+```

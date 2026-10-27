@@ -20,8 +20,8 @@ trap 'rm -rf "$build_dir"' EXIT HUP INT TERM
 
 cc -O2 -Wall -Wextra -Werror "$source_dir/voice-session.c" "$source_dir/voice-pcm-test.c" \
 	$(pkg-config --cflags --libs alsa) -o "$build_dir/voice-pcm-test"
-cc -O2 -Wall -Wextra -Werror "$source_dir/voice-session.c" "$source_dir/call-audio.c" \
-	$(pkg-config --cflags --libs alsa gio-2.0 libpulse-mainloop-glib) \
+cc -O2 -Wall -Wextra -Werror "$source_dir/voice-session.c" "$source_dir/call-audio.c" "$source_dir/voice-subscriptions.c" \
+	$(pkg-config --cflags --libs alsa gio-2.0 libpulse-mainloop-glib qmi-glib qrtr-glib) \
 	-o "$build_dir/vermeer-call-audio"
 
 install -d -m 700 /var/lib/vermeer-call-audio

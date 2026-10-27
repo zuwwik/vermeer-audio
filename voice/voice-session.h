@@ -17,10 +17,11 @@ struct voice_session {
 	bool output;
 	bool speaker;
 	bool muted;
+	unsigned int subscription;
 };
 
 int voice_session_init(struct voice_session *session, const char *ucm_directory);
-int voice_session_start(struct voice_session *session, bool speaker);
+int voice_session_start(struct voice_session *session, bool speaker, unsigned int subscription);
 void voice_session_stop(struct voice_session *session);
 void voice_session_destroy(struct voice_session *session);
 int voice_session_mute(struct voice_session *session, bool mute);

@@ -40,7 +40,7 @@ int main(int argc, char **argv)
 	}
 	signal(SIGINT, stop);
 	signal(SIGTERM, stop);
-	ret = voice_session_start(&session, !strcmp(argv[2], "speaker"));
+	ret = voice_session_start(&session, !strcmp(argv[2], "speaker"), 1);
 	if (!ret) {
 		puts("Local voice route prepared; no call was originated.");
 		fflush(stdout);
