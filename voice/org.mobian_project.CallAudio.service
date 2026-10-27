@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=org.mobian_project.CallAudio
+Exec=/usr/local/libexec/vermeer-call-audio /usr/local/share/vermeer-voice/ucm2
+SystemdService=vermeer-call-audio.service

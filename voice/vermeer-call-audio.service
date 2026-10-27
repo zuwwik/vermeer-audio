@@ -1,0 +1,17 @@
+[Unit]
+Description=Vermeer AudioReach call audio
+Wants=pipewire-pulse.service
+After=pipewire-pulse.service
+PartOf=graphical-session.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=dbus
+BusName=org.mobian_project.CallAudio
+ExecStart=/usr/local/libexec/vermeer-call-audio /usr/local/share/vermeer-voice/ucm2
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=40
+
+[Install]
+WantedBy=graphical-session.target
