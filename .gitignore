@@ -1,0 +1,9 @@
+/build*/
+/stage*/
+/downloads/
+/vendor/
+*.log
+*.orig
+*.rej
+__pycache__/
+*.pyc

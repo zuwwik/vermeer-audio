@@ -1,0 +1,10 @@
+{
+  "audioreach-topology": {
+    "url": "https://github.com/linux-msm/audioreach-topology.git",
+    "revision": "d6bb205aca5f4b8fa6b2f44cf8b5f6a081cbf037"
+  },
+  "audioreach-graphservices": {
+    "url": "https://github.com/AudioReach/audioreach-graphservices.git",
+    "revision": "76d04ffb30caa1fe609b94f9f6081210cb962fc1"
+  }
+}
