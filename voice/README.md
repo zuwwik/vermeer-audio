@@ -64,3 +64,17 @@ cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
   voice/test-subscriptions.c -o build/test-subscriptions
 build/test-subscriptions
 ```
+
+## Bluetooth desktop capture
+
+Bluetooth microphone names come from the headset. Installation removes the old
+`52-vermeer-bluetooth.conf` name override. `53-vermeer-headset.conf` assigns
+EasyEffects' capture processing nodes to one PipeWire policy link group, so
+WirePlumber can trace recording applications through that graph to the headset.
+This preserves the normal HFP/A2DP switching policy and creates no extra devices.
+
+Use WirePlumber 0.5.19 or newer for the profile-switch and stream-recovery fixes
+listed in its [release notes](https://pipewire.pages.freedesktop.org/wireplumber/resources/releases.html).
+The `bluetooth.autoswitch-to-headset-profile` setting must be enabled. Choose the
+headset as EasyEffects' input, and choose `Easy Effects Source` in applications
+that should receive its processed audio.

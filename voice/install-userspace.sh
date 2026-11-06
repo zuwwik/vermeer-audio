@@ -51,8 +51,10 @@ save /etc/wireplumber/wireplumber.conf.d/51-vermeer-alsa.conf
 install -D -m 644 "$source_dir/51-vermeer-alsa.conf" \
 	/etc/wireplumber/wireplumber.conf.d/51-vermeer-alsa.conf
 save /etc/pipewire/pipewire.conf.d/52-vermeer-bluetooth.conf
-install -D -m 644 "$source_dir/52-vermeer-bluetooth.conf" \
-	/etc/pipewire/pipewire.conf.d/52-vermeer-bluetooth.conf
+rm -f /etc/pipewire/pipewire.conf.d/52-vermeer-bluetooth.conf
+save /etc/pipewire/pipewire.conf.d/53-vermeer-headset.conf
+install -D -m 644 "$source_dir/53-vermeer-headset.conf" \
+	/etc/pipewire/pipewire.conf.d/53-vermeer-headset.conf
 sync
 
 if [ "$stage" = --stage ]; then
