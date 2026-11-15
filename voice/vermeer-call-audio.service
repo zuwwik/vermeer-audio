@@ -3,7 +3,10 @@ Description=Vermeer AudioReach call audio
 Wants=pipewire-pulse.service
 After=pipewire-pulse.service
 PartOf=graphical-session.target
-StartLimitIntervalSec=0
+ConditionUser=!plasmalogin
+ConditionPathExists=/proc/asound/SM8550VERMEER/id
+StartLimitIntervalSec=60
+StartLimitBurst=3
 
 [Service]
 Type=dbus
