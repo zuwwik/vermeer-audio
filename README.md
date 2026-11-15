@@ -62,16 +62,26 @@ See [voice/README.md](voice/README.md) for the exporter and source revision.
 ## Scope
 
 The ordinary capture path is one physical AMIC1 duplicated into two PCM
-channels. Its analog gain is 8 and digital gain is 84 (unity). The speaker
+channels. Its analog gain is 12 (18 dB) and digital gain is 84 (unity). The speaker
 amplifiers use raw volume 360; Android speaker protection is not implemented.
 Call routing, system-media restoration and the native voice paths are included.
+The call controller starts only when the ALSA card exists. If DSP recovery
+temporarily removes it, the next D-Bus activation can start the controller
+again without continuously retrying against a missing card.
 Two private QMI VOICE clients observe the logical subscriptions and select
 the kernel's matching voice session for a call. The primary physical SIM slot
 does not determine the audio route. The prebuilt controller also needs the
 distribution's libqmi-glib and libqrtr-glib runtime libraries.
-Bluetooth desktop audio uses the distribution's PipeWire/BlueZ stack; this does
+Bluetooth desktop audio uses PipeWire/BlueZ with its native HFP backend,
+independent of ModemManager. Headset capture enables HFP on demand; ordinary
+playback uses A2DP. This does
 not imply working Bluetooth modem-call speech or verified simultaneous dual-SIM
 calls. Persistent DSP firmware failures remain a separate kernel/firmware issue.
+On the postmarketOS systemd image, install `wireplumber-logind` to enable
+native seat monitoring. The supplied WirePlumber drop-in keeps the Plasma Login
+greeter from starting another media manager and claiming the HFP profile during
+desktop login. Login-screen audio is consequently unavailable; KDE audio uses
+the desktop user's normal media services.
 The SIM2 speech path was checked manually; a repeat hardware check of automatic
 incoming SIM2 selection is still pending.
 

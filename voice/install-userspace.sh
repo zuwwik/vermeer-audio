@@ -55,6 +55,12 @@ rm -f /etc/pipewire/pipewire.conf.d/52-vermeer-bluetooth.conf
 save /etc/pipewire/pipewire.conf.d/53-vermeer-headset.conf
 install -D -m 644 "$source_dir/53-vermeer-headset.conf" \
 	/etc/pipewire/pipewire.conf.d/53-vermeer-headset.conf
+save /etc/wireplumber/wireplumber.conf.d/54-vermeer-bluetooth.conf
+install -D -m 644 "$source_dir/54-vermeer-bluetooth.conf" \
+	/etc/wireplumber/wireplumber.conf.d/54-vermeer-bluetooth.conf
+save /etc/systemd/user/wireplumber.service.d/60-vermeer-greeter.conf
+install -D -m 644 "$source_dir/60-vermeer-greeter.conf" \
+	/etc/systemd/user/wireplumber.service.d/60-vermeer-greeter.conf
 sync
 
 if [ "$stage" = --stage ]; then
